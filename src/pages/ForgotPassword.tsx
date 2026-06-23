@@ -6,11 +6,11 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [devInfo, setDevInfo] = useState(null)
+  const [devInfo, setDevInfo] = useState<{ otp: string; url: string } | null>(null)
   const { forgotPassword } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
@@ -19,13 +19,14 @@ export default function ForgotPassword() {
       const res = await forgotPassword(email)
       localStorage.setItem('resetEmail', email)
       if (res.devOtp) {
-        setDevInfo({ otp: res.devOtp, url: res.previewUrl })
+        setDevInfo({ otp: res.devOtp, url: res.previewUrl! })
       } else {
         setSuccess('OTP sent to your email!')
         setTimeout(() => navigate('/verify-otp'), 1500)
       }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send OTP')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || 'Failed to send OTP')
     }
   }
 

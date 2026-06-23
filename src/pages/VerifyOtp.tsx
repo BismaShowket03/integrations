@@ -8,7 +8,7 @@ export default function VerifyOtp() {
   const { verifyOtp } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const email = localStorage.getItem('resetEmail')
     if (!email) {
@@ -19,8 +19,9 @@ export default function VerifyOtp() {
       await verifyOtp(email, otp)
       localStorage.setItem('resetOtp', otp)
       navigate('/reset-password')
-    } catch (err) {
-      setError(err.response?.data?.error || 'Invalid OTP')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || 'Invalid OTP')
     }
   }
 

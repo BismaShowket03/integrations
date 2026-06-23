@@ -10,7 +10,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const USERS_FILE = join(__dirname, '..', 'data', 'users.json')
 const router = Router()
 
-async function getUsers() {
+interface User {
+  id: string
+  name: string
+  email: string
+  password: string
+  resetOtp?: string
+  resetOtpExpiry?: number
+}
+
+async function getUsers(): Promise<User[]> {
   try {
     const data = await readFile(USERS_FILE, 'utf-8')
     return JSON.parse(data)
@@ -19,7 +28,7 @@ async function getUsers() {
   }
 }
 
-async function saveUsers(users) {
+async function saveUsers(users: User[]) {
   await writeFile(USERS_FILE, JSON.stringify(users, null, 2))
 }
 
@@ -49,18 +58,18 @@ async function createTransporter() {
   })
 }
 
-let transporter
+let transporter: nodemailer.Transporter
 ;(async () => {
   transporter = await createTransporter()
 })()
 
-// Register
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body
     const users = await getUsers()
     if (users.find((u) => u.email === email)) {
-      return res.status(400).json({ error: 'Email already registered' })
+      res.status(400).json({ error: 'Email already registered' })
+      return
     }
     const hashedPassword = await bcrypt.hash(password, 10)
     users.push({ id: Date.now().toString(), name, email, password: hashedPassword })
@@ -72,16 +81,16 @@ router.post('/register', async (req, res) => {
   }
 })
 
-// Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body
     const users = await getUsers()
     const user = users.find((u) => u.email === email)
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: 'Invalid email or password' })
+      res.status(401).json({ error: 'Invalid email or password' })
+      return
     }
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '1h' })
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } })
   } catch (err) {
     console.error('Login error:', err)
@@ -89,14 +98,14 @@ router.post('/login', async (req, res) => {
   }
 })
 
-// Forgot password – send OTP
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body
     const users = await getUsers()
     const user = users.find((u) => u.email === email)
     if (!user) {
-      return res.status(404).json({ error: 'No account found with this email' })
+      res.status(404).json({ error: 'No account found with this email' })
+      return
     }
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     user.resetOtp = otp
@@ -125,14 +134,14 @@ router.post('/forgot-password', async (req, res) => {
   }
 })
 
-// Verify OTP
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body
     const users = await getUsers()
     const user = users.find((u) => u.email === email)
-    if (!user || user.resetOtp !== otp || Date.now() > user.resetOtpExpiry) {
-      return res.status(400).json({ error: 'Invalid or expired OTP' })
+    if (!user || user.resetOtp !== otp || Date.now() > (user.resetOtpExpiry ?? 0)) {
+      res.status(400).json({ error: 'Invalid or expired OTP' })
+      return
     }
     res.json({ message: 'OTP verified' })
   } catch (err) {
@@ -141,14 +150,14 @@ router.post('/verify-otp', async (req, res) => {
   }
 })
 
-// Reset password
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, otp, password } = req.body
     const users = await getUsers()
     const user = users.find((u) => u.email === email)
-    if (!user || user.resetOtp !== otp || Date.now() > user.resetOtpExpiry) {
-      return res.status(400).json({ error: 'Invalid or expired OTP' })
+    if (!user || user.resetOtp !== otp || Date.now() > (user.resetOtpExpiry ?? 0)) {
+      res.status(400).json({ error: 'Invalid or expired OTP' })
+      return
     }
     user.password = await bcrypt.hash(password, 10)
     delete user.resetOtp

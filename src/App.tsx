@@ -1,3 +1,4 @@
+import { ReactNode } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import Login from './pages/Login'
@@ -7,12 +8,12 @@ import VerifyOtp from './pages/VerifyOtp'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   return user ? children : <Navigate to="/login" />
 }
 
-function PublicRoute({ children }) {
+function PublicRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   return user ? <Navigate to="/dashboard" /> : children
 }

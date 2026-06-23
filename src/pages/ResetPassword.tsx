@@ -9,7 +9,7 @@ export default function ResetPassword() {
   const { resetPassword } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirm) {
       setError('Passwords do not match')
@@ -27,8 +27,9 @@ export default function ResetPassword() {
       localStorage.removeItem('resetOtp')
       alert('Password reset successful!')
       navigate('/login')
-    } catch (err) {
-      setError(err.response?.data?.error || 'Reset failed')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || 'Reset failed')
     }
   }
 
