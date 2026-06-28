@@ -103,21 +103,22 @@ router.post('/forgot-password', async (req, res) => {
     user.resetOtpExpiry = Date.now() + 10 * 60 * 1000
     await saveUsers(users)
 
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_USER || '"Test" <test@ethereal.email>',
-      to: email,
-      subject: 'Password Reset OTP',
-      text: `Your OTP for password reset is: ${otp}. It expires in 10 minutes.`,
-    })
-
-    const isDev = !process.env.EMAIL_USER
-    if (isDev) {
-      console.log('Preview URL:', nodemailer.getTestMessageUrl(info))
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.EMAIL_USER || '"Test" <test@ethereal.email>',
+        to: email,
+        subject: 'Password Reset OTP',
+        text: `Your OTP for password reset is: ${otp}. It expires in 10 minutes.`,
+      })
+      const isDev = !process.env.EMAIL_USER
+      if (isDev) console.log('Preview URL:', nodemailer.getTestMessageUrl(info))
+    } catch (mailErr) {
+      console.error('Email send failed (OTP still valid):', mailErr)
     }
 
     res.json({
       message: 'OTP sent to your email',
-      ...(isDev && { devOtp: otp, previewUrl: nodemailer.getTestMessageUrl(info) }),
+      devOtp: otp,
     })
   } catch (err) {
     console.error('Send OTP error:', err)
