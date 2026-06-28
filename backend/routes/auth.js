@@ -10,16 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const USERS_FILE = join(__dirname, '..', 'data', 'users.json')
 const router = Router()
 
-interface User {
-  id: string
-  name: string
-  email: string
-  password: string
-  resetOtp?: string
-  resetOtpExpiry?: number
-}
-
-async function getUsers(): Promise<User[]> {
+async function getUsers() {
   try {
     const data = await readFile(USERS_FILE, 'utf-8')
     return JSON.parse(data)
@@ -28,7 +19,7 @@ async function getUsers(): Promise<User[]> {
   }
 }
 
-async function saveUsers(users: User[]) {
+async function saveUsers(users) {
   await writeFile(USERS_FILE, JSON.stringify(users, null, 2))
 }
 
@@ -38,10 +29,7 @@ async function createTransporter() {
       host: process.env.EMAIL_HOST,
       port: Number(process.env.EMAIL_PORT),
       secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     })
   }
   const testAccount = await nodemailer.createTestAccount()
@@ -58,7 +46,7 @@ async function createTransporter() {
   })
 }
 
-let transporter: nodemailer.Transporter
+let transporter
 ;(async () => {
   transporter = await createTransporter()
 })()
@@ -90,7 +78,7 @@ router.post('/login', async (req, res) => {
       res.status(401).json({ error: 'Invalid email or password' })
       return
     }
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '1h' })
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } })
   } catch (err) {
     console.error('Login error:', err)
@@ -121,7 +109,7 @@ router.post('/forgot-password', async (req, res) => {
 
     const isDev = !process.env.EMAIL_USER
     if (isDev) {
-      console.log('Preview URL: ' + nodemailer.getTestMessageUrl(info))
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info))
     }
 
     res.json({
@@ -139,7 +127,7 @@ router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body
     const users = await getUsers()
     const user = users.find((u) => u.email === email)
-    if (!user || user.resetOtp !== otp || Date.now() > (user.resetOtpExpiry ?? 0)) {
+    if (!user || user.resetOtp !== otp || Date.now() > (user.resetOtpExpiry || 0)) {
       res.status(400).json({ error: 'Invalid or expired OTP' })
       return
     }
@@ -155,7 +143,7 @@ router.post('/reset-password', async (req, res) => {
     const { email, otp, password } = req.body
     const users = await getUsers()
     const user = users.find((u) => u.email === email)
-    if (!user || user.resetOtp !== otp || Date.now() > (user.resetOtpExpiry ?? 0)) {
+    if (!user || user.resetOtp !== otp || Date.now() > (user.resetOtpExpiry || 0)) {
       res.status(400).json({ error: 'Invalid or expired OTP' })
       return
     }
