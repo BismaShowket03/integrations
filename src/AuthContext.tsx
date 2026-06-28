@@ -15,6 +15,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<{ message: string }>
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  googleLogin: (credential: string) => Promise<void>
   forgotPassword: (email: string) => Promise<{ message: string; devOtp?: string; previewUrl?: string }>
   verifyOtp: (email: string, otp: string) => Promise<{ message: string }>
   resetPassword: (email: string, otp: string, password: string) => Promise<{ message: string }>
@@ -50,6 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }
 
+  const googleLogin = async (credential: string) => {
+    const { data } = await axios.post(`${API}/google`, { credential })
+    setToken(data.token)
+    setUser(data.user)
+  }
+
   const logout = () => {
     setToken(null)
     setUser(null)
@@ -71,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, register, login, logout, forgotPassword, verifyOtp, resetPassword }}>
+    <AuthContext.Provider value={{ user, token, register, login, googleLogin, logout, forgotPassword, verifyOtp, resetPassword }}>
       {children}
     </AuthContext.Provider>
   )
