@@ -2,12 +2,9 @@ import { Router } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import nodemailer from 'nodemailer'
-import { OAuth2Client } from 'google-auth-library'
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const USERS_FILE = process.env.VERCEL
@@ -89,40 +86,6 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err)
     res.status(500).json({ error: 'Server error' })
-  }
-})
-
-router.post('/google', async (req, res) => {
-  try {
-    const { credential } = req.body
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    })
-    const { email, name, sub: googleId } = ticket.getPayload()
-    const users = await getUsers()
-    let user = users.find((u) => u.email === email)
-
-    if (!user) {
-      user = {
-        id: Date.now().toString(),
-        name: name || email.split('@')[0],
-        email,
-        password: '',
-        googleId,
-      }
-      users.push(user)
-      await saveUsers(users)
-    } else if (!user.googleId) {
-      user.googleId = googleId
-      await saveUsers(users)
-    }
-
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } })
-  } catch (err) {
-    console.error('Google auth error:', err)
-    res.status(401).json({ error: 'Google authentication failed' })
   }
 })
 
